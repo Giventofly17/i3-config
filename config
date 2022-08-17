@@ -23,6 +23,23 @@ font pango:monospace 8
 # https://wiki.archlinux.org/index.php/XDG_Autostart
 exec --no-startup-id dex --autostart --environment i3
 
+# Window Preferences
+# No Borders
+default_border pixel 1
+default_floating_border pixel 1
+
+# Gaps
+gaps inner 4
+gaps outer 4
+
+# Floating Windows
+for_window [class="Nitrogen"] floating enable
+for_window [class="Lxappearance"] floating enable
+for_window [class="System-config-printer.py"] floating enable
+
+for_window [title="Hulu | Home - Mozilla Firefox"] fullscreen enable
+for_window [title="Disney+ | Movies and Shows — Mozilla Firefox"] fullscreen enable
+
 # The combination of xss-lock, nm-applet and pactl is a popular choice, so
 # they are included here as an example. Modify as you see fit.
 
@@ -34,16 +51,40 @@ exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock --nofork
 # and nm-applet is a desktop environment-independent system tray GUI for it.
 exec --no-startup-id nm-applet
 
-# Use pactl to adjust volume in PulseAudio.
-set $refresh_i3status killall -SIGUSR1 i3status
-bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10% && $refresh_i3status
-bindsym XF86AudioLowerVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ -10% && $refresh_i3status
-bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle && $refresh_i3status
-bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOURCE@ toggle && $refresh_i3status
+## Audio  control
 
-# Brightness
-bindsym XF86MonBrightnessUp exec /home/james/.Scripts/laptop_brightness/brightnessup
-bindsym XF86MonBrightnessDown exec /home/james/.Scripts/laptop_brightness/brightnessdown
+# Path to volume control, without trailing slash
+set $volumepath ~/i3-volume
+
+# Command for the status line
+#   ie: i3blocks, i3status
+set $statuscmd i3status
+
+# Signal used to update the status line
+#   i3blocks uses SIGRTMIN+10 by default
+#   i3status uses SIGUSR1 by default
+set $statussig SIGUSR1
+
+# Amount to increase/decrease volume as a percentage
+set $volumestep 5
+
+# pulseaudio-utils settings
+#
+# Symbolic name for sink (numeric index not supported)
+#   Recommended: comment out this setting and omit the -s option to use default sink
+#   List sink names: pacmd list-sinks | awk -F "[<>]" '/^\s+name: <.*>/{print $2}'
+#set $sinkname alsa_output.pci-0000_00_1b.0.analog-stereo
+
+# Using pulseaudio-utils (append "-s $sinkname" without quotes to override default sink)
+bindsym XF86AudioRaiseVolume exec --no-startup-id $volumepath/volume -n -t $statuscmd -u $statussig up $volumestep
+bindsym XF86AudioLowerVolume exec --no-startup-id $volumepath/volume -n -t $statuscmd -u $statussig down $volumestep
+bindsym XF86AudioMute        exec --no-startup-id $volumepath/volume -n -t $statuscmd -u $statussig mute
+
+# Track Control
+bindsym XF86AudioPrev exec --no-startup-id playerctl previous && /home/james/.Scripts/trackdown.sh
+bindsym XF86AudioNext exec --no-startup-id playerctl next && /home/james/.Scripts/trackup.sh
+bindsym XF86AudioPlay exec --no-startup-id playerctl play-pause
+
 
 # Use Mouse+$mod to drag floating windows to their wanted position
 floating_modifier $mod
@@ -51,17 +92,21 @@ floating_modifier $mod
 # start a terminal
 bindsym $mod+Return exec kitty
 
-# Browswer
-bindsym $mod+b exec --no-startup-id firefox
+# Browser
+bindsym $mod+b exec google-chrome-stable
 
 # File Manager
-bindsym $mod+n exec --no-startup-id pcmanfm
+bindsym $mod+n exec pcmanfm
 
 # kill focused window
-bindsym $mod++q kill
+bindsym $mod+q kill
 
-# Rofi
-bindsym $mod+d exec --no-startup-id rofi -show drun
+# Rofi Commands
+bindsym $mod+d exec --no-startup-id /home/james/.config/rofi/launchers/misc/launcher.sh
+bindsym $mod+Shift+e exec --no-startup-id /home/james/.config/rofi/powermenu/powermenu.sh
+
+# Take Screenshot
+bindsym Print exec --no-startup-id flameshot gui
 
 # change focus
 bindsym $mod+j focus left
@@ -155,7 +200,7 @@ bindsym $mod+Shift+c reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
 bindsym $mod+Shift+r restart
 # exit i3 (logs you out of your X session)
-bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -B 'Yes, exit i3' 'i3-msg exit'"
+#bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -B 'Yes, exit i3' 'i3-msg exit'"
 
 # resize window (you can also use the mouse for that)
 mode "resize" {
@@ -184,22 +229,20 @@ mode "resize" {
 
 bindsym $mod+r mode "resize"
 
-# Delete Title Bars
-default_border pixel 1
-default_floating_border pixel 1
-
-# Gaps
-gaps inner 4
-gaps outer 4
-
 # Start i3bar to display a workspace bar (plus the system information i3status
 # finds out, if available)
-bar {
-	font pango:Dejavu Sans Mono, FontAwesome 10
-        status_command i3status-rs
-}
+#bar {
+#
+#	tray_output primary
+#        status_command i3status -c /home/james/.config/i3/i3status.conf
+#}	
 
-#Autolaunch Applications
-exec /home/james/.Scripts/mouse_props
-exec_always --no-startup-id picom -b --experimental-backend
-exec_always --no-startup-id nitrogen --restore
+# AutoStart Applications
+exec --no-startup-id lxsession
+exec --no-startup-id nitrogen --restore
+exec --no-startup-id picom -b --experimental-backends
+exec --no-startup-id pa-applet
+exec --no-startup-id /usr/bin/dunst
+exec_always --no-startup-id /home/james/.config/polybar/launch.sh
+
+
